@@ -6,13 +6,13 @@ const router = express.Router();
 router.get("/userProvide", async (req, res, next) => {
     try {
         const provided = await User.findAll();
-        if (provided === []) {
+        if (provided.length === 0) {
             res.send("현재 유저가 없습니다.");
+            return;
         }
-        res.send("Hello");
-        // const result = JSON.stringify(provided);
-        // const message = "유저가 제공되었습니다!";
-        // res.render("show", { result, message });
+        const result = JSON.stringify(provided);
+        const message = "유저가 제공되었습니다!";
+        res.render("CR", { result, message });
     } catch (err) {
         console.error(err);
         next(err);
@@ -30,7 +30,7 @@ router.post("/userCreate", async (req, res, next) => {
         });
         const result = JSON.stringify(created);
         const message = "유저가 생성되었습니다!";
-        res.render("show", { result, message });
+        res.render("CR", { result, message });
     } catch (err) {
         console.error(err);
         next(err);
@@ -40,8 +40,18 @@ router.post("/userCreate", async (req, res, next) => {
 router.patch("/userModify/:who", async (req, res, next) => {
     const { name, age, married, comment } = req.body;
     try {
-        const params = req.params.who;
-        const modified = await User.update(
+        const params = decodeURIComponent(req.params.who);
+
+        const getOld = async () => {
+            const usersBefore = await User.findAll({
+                where: { name: params },
+            });
+            return JSON.stringify(usersBefore[0].dataValues);
+        };
+
+        const result1 = await getOld();
+
+        await User.update(
             {
                 name,
                 age,
@@ -52,9 +62,18 @@ router.patch("/userModify/:who", async (req, res, next) => {
                 where: { name: params },
             }
         );
-        const result = JSON.stringify(modified);
+
+        const getNew = async () => {
+            const usersAfter = await User.findAll({
+                where: { name: params },
+            });
+            return JSON.stringify(usersAfter[0].dataValues);
+        };
+
+        const result2 = await getNew();
         const message = "유저가 변경되었습니다!";
-        res.render("show", { result, message });
+
+        res.render("UD", { result1, result2, message });
     } catch (err) {
         console.error(err);
         next(err);
@@ -63,13 +82,33 @@ router.patch("/userModify/:who", async (req, res, next) => {
 
 router.delete("/userRemove/:who", async (req, res, next) => {
     try {
-        const params = req.params.who;
-        const removed = await User.destroy({
+        const params = decodeURIComponent(req.params.who);
+
+        const getOld = async () => {
+            const usersBefore = await User.findAll({
+                where: { name: params },
+            });
+
+            return JSON.stringify(usersBefore[0].dataValues);
+        };
+
+        const result1 = await getOld();
+
+        await User.destroy({
             where: { name: params },
         });
-        const result = JSON.stringify(removed);
+
+        const getNew = async () => {
+            const usersAfter = await User.findAll({
+                where: { name: params },
+            });
+            return JSON.stringify(usersAfter);
+        };
+
+        const result2 = await getNew();
         const message = "유저가 삭제되었습니다.";
-        res.render("show", { result, message });
+
+        res.render("UD", { result1, result2, message });
     } catch (err) {
         console.error(err);
         next(err);
